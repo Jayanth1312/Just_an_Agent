@@ -14,7 +14,7 @@ Nexly is a modern AI-powered assistant platform with a Next.js frontend and Expr
 
 ### 🎨 Frontend Features
 
-- **Modern UI**: Built with Next.js 13+ App Directory and TypeScript
+- **Modern UI**: Built with Next.js 15+ App Directory and TypeScript
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 - **Theme Support**: Dark, light, and system theme switching
 - **Component Library**: shadcn/ui components for consistent design
