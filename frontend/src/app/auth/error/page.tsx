@@ -8,7 +8,6 @@ export default function AuthErrorPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Auto redirect after 5 seconds
     const timer = setTimeout(() => {
       router.push("/sign-in");
     }, 5000);

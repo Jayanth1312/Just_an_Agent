@@ -3,16 +3,14 @@ import Cookies from "js-cookie";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Include cookies in requests
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Add token to requests if available
 api.interceptors.request.use((config) => {
   const token = Cookies.get("token");
   if (token) {
@@ -21,22 +19,26 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle response errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid, remove it
+    if (
+      error.response?.status === 401 &&
+      !error.config?.url?.includes("/auth/register") &&
+      !error.config?.url?.includes("/auth/login") &&
+      !error.config?.url?.includes("/auth/verify-otp")
+    ) {
       Cookies.remove("token");
-      // Optionally redirect to login
-      window.location.href = "/sign-in";
+      Cookies.remove("token", { path: "/" });
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace("/sign-in");
     }
     return Promise.reject(error);
   }
 );
 
 export const authService = {
-  // Register new user
   register: async (userData: {
     email: string;
     name: string;
@@ -45,11 +47,18 @@ export const authService = {
   }) => {
     try {
       const response = await api.post("/auth/register", userData);
+    } catch (error: any) {
+      throw error.response?.data || { message: "Registration failed" };
+    }
+  },
 
-      // Store token in cookie
+  verifyOTP: async (otpData: { email: string; otp: string }) => {
+    try {
+      const response = await api.post("/auth/verify-otp", otpData);
+
       if (response.data.token) {
         Cookies.set("token", response.data.token, {
-          expires: 7, // 7 days
+          expires: 7,
           secure: process.env.NODE_ENV === "production",
           sameSite: "strict",
         });
@@ -57,7 +66,17 @@ export const authService = {
 
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || { message: "Registration failed" };
+      throw error.response?.data || { message: "OTP verification failed" };
+    }
+  },
+
+  // Resend OTP
+  resendOTP: async (email: string) => {
+    try {
+      const response = await api.post("/auth/resend-otp", { email });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { message: "Failed to resend OTP" };
     }
   },
 
@@ -66,10 +85,9 @@ export const authService = {
     try {
       const response = await api.post("/auth/login", credentials);
 
-      // Store token in cookie
       if (response.data.token) {
         Cookies.set("token", response.data.token, {
-          expires: 7, // 7 days
+          expires: 7,
           secure: process.env.NODE_ENV === "production",
           sameSite: "strict",
         });
@@ -86,15 +104,22 @@ export const authService = {
     try {
       await api.post("/auth/logout");
       Cookies.remove("token");
-      window.location.href = "/sign-in";
+      // Clear all cookies to ensure complete logout
+      Cookies.remove("token", { path: "/" });
+      // Clear localStorage and sessionStorage
+      localStorage.clear();
+      sessionStorage.clear();
+      // Use replace instead of href to prevent back navigation
+      window.location.replace("/sign-in");
     } catch (error) {
-      // Even if request fails, remove token locally
       Cookies.remove("token");
-      window.location.href = "/sign-in";
+      Cookies.remove("token", { path: "/" });
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace("/sign-in");
     }
   },
 
-  // Get user profile
   getProfile: async () => {
     try {
       const response = await api.get("/auth/profile");
@@ -104,17 +129,14 @@ export const authService = {
     }
   },
 
-  // Check if user is authenticated
   isAuthenticated: () => {
     return !!Cookies.get("token");
   },
 
-  // Get token
   getToken: () => {
     return Cookies.get("token");
   },
 
-  // Request password reset
   requestPasswordReset: async (email: string) => {
     try {
       const response = await api.post("/auth/forgot-password", { email });

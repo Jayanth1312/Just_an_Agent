@@ -1,7 +1,7 @@
 {
-  "name": "backend",
+  "name": "just-an-agent-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend for Just an Agent - AI-Powered Platform",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

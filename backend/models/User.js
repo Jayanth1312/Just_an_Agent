@@ -21,54 +21,37 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      minlength: 6,
-    },
-    // OAuth provider information
-    providers: {
-      google: {
-        id: String,
-        email: String,
-      },
-      github: {
-        id: String,
-        username: String,
-        email: String,
+      required: function () {
+        return !this.oauthProvider;
       },
     },
-    // Profile information
+    oauthProvider: {
+      type: String,
+      enum: ["google", "github"],
+    },
+    oauthId: {
+      type: String,
+    },
     avatar: {
       type: String,
-      default: null,
     },
-    // Account verification
     isEmailVerified: {
       type: Boolean,
       default: false,
     },
-    // Password reset
-    passwordResetToken: {
-      type: String,
-      default: null,
-    },
-    passwordResetExpires: {
-      type: Date,
-      default: null,
-    },
-    // Timestamps
-    lastLogin: {
-      type: Date,
-      default: Date.now,
-    },
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
+    emailVerificationOTP: String,
+    emailVerificationOTPExpires: Date,
   },
   {
-    timestamps: true, // This adds createdAt and updatedAt fields
+    timestamps: true,
   }
 );
 
 // Index for efficient queries
 userSchema.index({ email: 1 });
-userSchema.index({ "providers.google.id": 1 });
-userSchema.index({ "providers.github.id": 1 });
+userSchema.index({ oauthProvider: 1, oauthId: 1 });
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
@@ -96,11 +79,26 @@ userSchema.statics.findByEmail = function (email) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-// Static method to find user by OAuth provider
-userSchema.statics.findByProvider = function (provider, id) {
-  const query = {};
-  query[`providers.${provider}.id`] = id;
-  return this.findOne(query);
+// Instance method to generate email verification OTP
+userSchema.methods.createEmailVerificationOTP = function () {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+  this.emailVerificationOTP = otp;
+  this.emailVerificationOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  return otp;
+};
+
+// Instance method to verify email verification OTP
+userSchema.methods.verifyEmailVerificationOTP = function (otp) {
+  return (
+    this.emailVerificationOTP === otp &&
+    this.emailVerificationOTPExpires > Date.now()
+  );
+};
+
+// Instance method to clear email verification OTP fields
+userSchema.methods.clearEmailVerificationOTP = function () {
+  this.emailVerificationOTP = null;
+  this.emailVerificationOTPExpires = null;
 };
 
 // Instance method to generate password reset token

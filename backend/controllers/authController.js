@@ -9,12 +9,10 @@ const generateToken = (userId) => {
   });
 };
 
-// Register new user
 const register = async (req, res) => {
   try {
     const { email, name, profession, password } = req.body;
 
-    // Validate required fields
     if (!email || !name || !password) {
       return res.status(400).json({
         success: false,
@@ -22,23 +20,122 @@ const register = async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await User.findByEmail(email);
-    if (existingUser) {
+    if (existingUser && existingUser.isEmailVerified) {
+      // Check if this is an OAuth user
+      if (existingUser.oauthProvider) {
+        return res.status(409).json({
+          success: false,
+          message: `An account with this email already exists using ${existingUser.oauthProvider}. Please sign in with ${existingUser.oauthProvider} instead.`,
+          requiresOAuth: true,
+          oauthProvider: existingUser.oauthProvider,
+        });
+      }
+
       return res.status(409).json({
         success: false,
         message: "User with this email already exists",
       });
     }
 
-    // Create new user
-    const user = new User({
-      email,
-      name,
-      profession,
-      password,
-    });
+    let user;
+    if (existingUser && !existingUser.isEmailVerified) {
+      user = existingUser;
+      user.name = name;
+      user.profession = profession;
+      user.password = password;
+    } else {
+      // Create new user
+      user = new User({
+        email,
+        name,
+        profession,
+        password,
+        isEmailVerified: false,
+      });
+    }
 
+    // Generate and set OTP
+    const otp = user.createEmailVerificationOTP();
+    await user.save();
+
+    // Send OTP via email
+    try {
+      const emailResult = await modernEmailService.sendVerificationOTP(
+        email,
+        name,
+        otp
+      );
+      console.log(
+        "📧 Email service result:",
+        emailResult.message || "Email sent successfully"
+      );
+    } catch (emailError) {
+      console.error("⚠️  Email service error:", emailError.message);
+
+      // In development, continue anyway since OTP is logged to console
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`🔐 Development Mode: OTP for ${email} is: ${otp}`);
+        console.log("💡 Use this OTP to verify your account");
+      } else {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send verification email",
+        });
+      }
+    }
+
+    const responseMessage =
+      process.env.NODE_ENV !== "production"
+        ? "Verification OTP sent to your email (check terminal for development OTP)"
+        : "Verification OTP sent to your email";
+
+    res.status(201).json({
+      success: true,
+      message: responseMessage,
+      email: email,
+      requiresVerification: true,
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error during registration",
+    });
+  }
+};
+
+// Verify OTP and complete registration
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    // Find user
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    // Verify OTP
+    if (!user.verifyEmailVerificationOTP(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    // Mark email as verified and clear OTP
+    user.isEmailVerified = true;
+    user.clearEmailVerificationOTP();
     await user.save();
 
     // Generate token
@@ -52,17 +149,94 @@ const register = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "User registered successfully",
+      message: "Email verified successfully",
       user: user.toJSON(),
       token,
     });
   } catch (error) {
-    console.error("Registration error:", error);
+    console.error("OTP verification error:", error);
     res.status(500).json({
       success: false,
-      message: "Internal server error during registration",
+      message: "Internal server error during verification",
+    });
+  }
+};
+
+// Resend OTP
+const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Find user
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already verified",
+      });
+    }
+
+    // Generate new OTP
+    const otp = user.createEmailVerificationOTP();
+    await user.save();
+
+    // Send OTP via email
+    try {
+      const emailResult = await modernEmailService.sendVerificationOTP(
+        user.email,
+        user.name,
+        otp
+      );
+      console.log(
+        emailResult.message || "Email sent successfully"
+      );
+    } catch (emailError) {
+      console.error(emailError.message);
+
+      // In development, continue anyway since OTP is logged to console
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          `🔐 Development Mode: New OTP for ${user.email} is: ${otp}`
+        );
+        console.log("💡 Use this OTP to verify your account");
+      } else {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send verification email",
+        });
+      }
+    }
+
+    const responseMessage =
+      process.env.NODE_ENV !== "production"
+        ? "New OTP sent to your email (check terminal for development OTP)"
+        : "New OTP sent to your email";
+
+    res.status(200).json({
+      success: true,
+      message: responseMessage,
+    });
+  } catch (error) {
+    console.error("Resend OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
     });
   }
 };
@@ -86,6 +260,16 @@ const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
+      });
+    }
+
+    // Check if user registered via OAuth and doesn't have a password
+    if (user.oauthProvider && !user.password) {
+      return res.status(400).json({
+        success: false,
+        message: `This account was created using ${user.oauthProvider}. Please sign in with ${user.oauthProvider} instead.`,
+        requiresOAuth: true,
+        oauthProvider: user.oauthProvider,
       });
     }
 
@@ -164,20 +348,25 @@ const getProfile = async (req, res) => {
 // OAuth success handler
 const oauthSuccess = (req, res) => {
   try {
-    // Generate token for OAuth user
+    console.log("🔐 OAuth Success - User data:", {
+      id: req.user._id,
+      email: req.user.email,
+      isNewUser: req.user.isNewUser,
+    });
+
     const token = generateToken(req.user._id);
 
-    // Set HTTP-only cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // Redirect to frontend with success
     const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
-    res.redirect(`${frontendURL}/auth/success?token=${token}`);
+    const redirectPath = req.user.isNewUser ? "/welcome" : "/home";
+
+    res.redirect(`${frontendURL}${redirectPath}`);
   } catch (error) {
     console.error("OAuth success error:", error);
     const frontendURL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -206,7 +395,6 @@ const requestPasswordReset = async (req, res) => {
     // Find user by email
     const user = await User.findByEmail(email);
     if (!user) {
-      // Don't reveal if user exists or not for security
       return res.status(200).json({
         success: true,
         message:
@@ -214,7 +402,7 @@ const requestPasswordReset = async (req, res) => {
       });
     }
 
-    // Check if user has a password (not OAuth-only user)
+    // Check if user has a password
     if (!user.password) {
       return res.status(400).json({
         success: false,
@@ -228,11 +416,31 @@ const requestPasswordReset = async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     // Send email
-    await modernEmailService.sendPasswordResetEmail(
-      user.email,
-      user.name,
-      resetToken
-    );
+    try {
+      const emailResult = await modernEmailService.sendPasswordResetEmail(
+        user.email,
+        user.name,
+        resetToken
+      );
+      console.log(
+        emailResult.message || "Email sent successfully"
+      );
+    } catch (emailError) {
+      console.error(emailError.message);
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`🔗 Development Mode: Reset link for ${user.email}`);
+        console.log(
+          `Reset URL: ${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
+        );
+        console.log("💡 Use this link to reset your password");
+      } else {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send password reset email",
+        });
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -349,12 +557,13 @@ const verifyResetToken = async (req, res) => {
 
 module.exports = {
   register,
+  verifyOTP,
+  resendOTP,
   login,
   logout,
   getProfile,
-  oauthSuccess,
-  oauthFailure,
   requestPasswordReset,
   resetPassword,
   verifyResetToken,
+  oauthSuccess,
 };

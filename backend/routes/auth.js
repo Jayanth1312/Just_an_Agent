@@ -7,6 +7,8 @@ const router = express.Router();
 
 // Local authentication routes
 router.post("/register", authController.register);
+router.post("/verify-otp", authController.verifyOTP);
+router.post("/resend-otp", authController.resendOTP);
 router.post("/login", authController.login);
 router.post("/logout", authController.logout);
 router.get("/profile", authenticateToken, authController.getProfile);
@@ -14,7 +16,6 @@ router.get("/profile", authenticateToken, authController.getProfile);
 // Password reset routes
 router.post("/forgot-password", authController.requestPasswordReset);
 router.post("/reset-password", authController.resetPassword);
-router.get("/verify-reset-token/:token", authController.verifyResetToken);
 
 // Google OAuth routes
 router.get(
@@ -27,7 +28,7 @@ router.get(
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: "/auth/failure",
+    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/error`,
   }),
   authController.oauthSuccess
 );
@@ -43,13 +44,10 @@ router.get(
 router.get(
   "/github/callback",
   passport.authenticate("github", {
-    failureRedirect: "/auth/failure",
+    failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth/error`,
   }),
   authController.oauthSuccess
 );
-
-// OAuth failure route
-router.get("/failure", authController.oauthFailure);
 
 // Test protected route
 router.get("/test", authenticateToken, (req, res) => {

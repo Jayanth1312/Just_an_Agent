@@ -29,54 +29,49 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // Check if user already exists with this Google ID
-        let user = await User.findByProvider("google", profile.id);
+        let user = await User.findOne({
+          oauthProvider: "google",
+          oauthId: profile.id,
+        });
 
         if (user) {
-          // Update last login
-          user.lastLogin = new Date();
           await user.save();
-          return done(null, user);
+          console.log(`🔁 Existing Google user login: ${user.email}`);
+          return done(null, { ...user.toObject(), isNewUser: false });
         }
 
-        // Check if user exists with same email
         user = await User.findByEmail(profile.emails[0].value);
 
         if (user) {
-          // Link Google account to existing user
-          user.providers.google = {
-            id: profile.id,
-            email: profile.emails[0].value,
-          };
+          user.oauthProvider = "google";
+          user.oauthId = profile.id;
           user.isEmailVerified = true;
-          user.lastLogin = new Date();
           if (!user.avatar && profile.photos && profile.photos[0]) {
             user.avatar = profile.photos[0].value;
           }
           await user.save();
-          return done(null, user);
+          console.log(
+            `🔗 Linked Google account to existing user: ${user.email}`
+          );
+          return done(null, { ...user.toObject(), isNewUser: false });
         }
 
         // Create new user
         user = new User({
           email: profile.emails[0].value,
           name: profile.displayName,
-          providers: {
-            google: {
-              id: profile.id,
-              email: profile.emails[0].value,
-            },
-          },
+          oauthProvider: "google",
+          oauthId: profile.id,
           avatar:
             profile.photos && profile.photos[0]
               ? profile.photos[0].value
               : null,
           isEmailVerified: true,
-          lastLogin: new Date(),
         });
 
         await user.save();
-        done(null, user);
+        console.log(`✨ New Google user created: ${user.email}`);
+        done(null, { ...user.toObject(), isNewUser: true });
       } catch (error) {
         console.error("Google OAuth error:", error);
         done(error, null);
@@ -85,7 +80,7 @@ passport.use(
   )
 );
 
-// GitHub OAuth Strategy
+// GitHub OAuth
 passport.use(
   new GitHubStrategy(
     {
@@ -95,17 +90,17 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // Check if user already exists with this GitHub ID
-        let user = await User.findByProvider("github", profile.id);
+        let user = await User.findOne({
+          oauthProvider: "github",
+          oauthId: profile.id,
+        });
 
         if (user) {
-          // Update last login
-          user.lastLogin = new Date();
           await user.save();
-          return done(null, user);
+          console.log(`🔁 Existing GitHub user login: ${user.email}`);
+          return done(null, { ...user.toObject(), isNewUser: false });
         }
 
-        // Check if user exists with same email
         const email =
           profile.emails && profile.emails[0] ? profile.emails[0].value : null;
 
@@ -113,43 +108,37 @@ passport.use(
           user = await User.findByEmail(email);
 
           if (user) {
-            // Link GitHub account to existing user
-            user.providers.github = {
-              id: profile.id,
-              username: profile.username,
-              email: email,
-            };
+            user.oauthProvider = "github";
+            user.oauthId = profile.id;
             user.isEmailVerified = true;
-            user.lastLogin = new Date();
             if (!user.avatar && profile.photos && profile.photos[0]) {
               user.avatar = profile.photos[0].value;
             }
             await user.save();
-            return done(null, user);
+            console.log(
+              `🔗 Linked GitHub account to existing user: ${user.email}`
+            );
+            return done(null, { ...user.toObject(), isNewUser: false });
           }
         }
 
-        // Create new user
         user = new User({
-          email: email || `${profile.username}@github.local`, // Fallback email
+          email: email || `${profile.username}@github.local`,
           name: profile.displayName || profile.username,
-          providers: {
-            github: {
-              id: profile.id,
-              username: profile.username,
-              email: email,
-            },
-          },
+          oauthProvider: "github",
+          oauthId: profile.id,
           avatar:
             profile.photos && profile.photos[0]
               ? profile.photos[0].value
               : null,
           isEmailVerified: !!email,
-          lastLogin: new Date(),
         });
 
         await user.save();
-        done(null, user);
+        console.log(
+          `✨ New GitHub user created: ${user.email || profile.username}`
+        );
+        done(null, { ...user.toObject(), isNewUser: true });
       } catch (error) {
         console.error("GitHub OAuth error:", error);
         done(error, null);

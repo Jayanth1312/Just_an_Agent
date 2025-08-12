@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -11,6 +11,24 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const hostGrotesk = localFont({
+  src: "../Fonts/HostGrotesk-VariableFont_wght.ttf",
+  variable: "--font-host-grotesk",
+  display: "swap",
+});
+
+const nationalPark = localFont({
+  src: "../Fonts/NationalPark-VariableVF.ttf",
+  variable: "--font-national-park",
+  display: "swap",
+});
+
+const pecita = localFont({
+  src: "../Fonts/Pecita.otf",
+  variable: "--font-pecita",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -24,18 +42,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${hostGrotesk.variable} ${nationalPark.variable} ${pecita.variable} antialiased`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   );

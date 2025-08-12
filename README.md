@@ -1,6 +1,6 @@
-# Nexly - AI-Powered Platform
+# Just an Agent - AI-Powered Platform
 
-Nexly is a modern AI-powered platform with a Next.js frontend and Express.js backend, featuring comprehensive authentication, search capabilities, and AI integration.
+Just an Agent is a modern AI-powered platform with a Next.js frontend and Express.js backend, featuring comprehensive authentication, search capabilities, and AI integration.
 
 ## ✨ Features
 
@@ -41,7 +41,7 @@ Nexly is a modern AI-powered platform with a Next.js frontend and Express.js bac
 ## 🏗️ Project Structure
 
 ```
-nexly/
+just-an-agent/
 ├── frontend/                 # Next.js Frontend Application
 │   ├── src/
 │   │   ├── app/             # Next.js 13+ App Directory
@@ -121,8 +121,8 @@ nexly/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Jayanth1312/nexly.git
-cd nexly
+git clone https://github.com/Jayanth1312/just-an-agent.git
+cd just-an-agent
 ```
 
 ### 2. Backend Setup
@@ -174,7 +174,7 @@ FRONTEND_URL=http://localhost:3000
 
 # Email Configuration
 RESEND_API_KEY=RESEND_API_STARTS_WITH: re
-EMAIL_FROM=Nexly <onboarding@resend.dev>
+EMAIL_FROM=Just an Agent <onboarding@resend.dev>
 
 # CORS
 ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000

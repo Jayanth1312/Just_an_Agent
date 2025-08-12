@@ -1,7 +1,7 @@
-import SignIn from "@/components/signIn";
+import Login02 from "@/components/auth";
 
 export default function Home() {
   return (
-    <SignIn />
+    <Login02 />
   );
 }
