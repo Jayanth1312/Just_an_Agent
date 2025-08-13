@@ -1,7 +1,7 @@
 {
-  "name": "backend",
+  "name": "just-an-agent-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend for Just an Agent - AI-Powered Platform",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -14,14 +14,24 @@
     "@langchain/core": "^0.3.65",
     "@langchain/groq": "^0.2.3",
     "axios": "^1.10.0",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.1",
+    "express-session": "^1.18.2",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
     "langchain": "^0.3.30",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.4",
-    "node-cache": "^5.1.2"
+    "node-cache": "^5.1.2",
+    "nodemailer": "^7.0.5",
+    "passport": "^0.7.0",
+    "passport-github2": "^0.1.12",
+    "passport-google-oauth20": "^2.0.0",
+    "resend": "^4.7.0"
   }
 }

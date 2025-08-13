@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circular background -->
+  <circle cx="32" cy="32" r="30" stroke="#2563eb" stroke-width="2" fill="none"/>
+
+  <!-- Letter "A" in Pecita-style font -->
+  <path d="M32 16L42 44H38L36 38H28L26 44H22L32 16Z M29.5 34H34.5L32 27L29.5 34Z"
+        fill="#2563eb"
+        stroke="#2563eb"
+        stroke-width="0.5"
+        stroke-linejoin="round"/>
+</svg>
